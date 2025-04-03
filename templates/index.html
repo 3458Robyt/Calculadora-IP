@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Subred</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/styles.css') }}">
+
+</head>
+<body>
+    <div class="container">
+        <h2>Calculadora de Subred</h2>
+        <div class="input-group">
+            <label for="ip">Dirección IP</label>
+            <input type="text" id="ip" placeholder="Ejemplo: 192.168.1.1">
+        </div>
+        <div class="input-group">
+            <label for="mask">Máscara de Red / Prefijo</label>
+            <input type="text" id="mask" placeholder="Ejemplo: 255.255.255.0 o 24">
+        </div>
+        <button class="btn btn-calculate" onclick="calcular()">Calcular</button>
+        <button class="btn btn-reset" onclick="reiniciar()">Reiniciar</button>
+        <div id="error-message" class="error"></div>
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        function validarIP(ip) {
+            let regex = /^(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])(\.(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])){3}$/;
+            return regex.test(ip);
+        }
+
+        function validarMascara(mask) {
+            let prefixRegex = /^(3[0-2]|[12]?[0-9])$/; 
+            let maskRegex = /^(255|254|252|248|240|224|192|128|0)(\.(255|254|252|248|240|224|192|128|0)){3}$/;
+            return prefixRegex.test(mask) || maskRegex.test(mask);
+        }
+
+        function calcular() {
+            let ip = document.getElementById("ip").value.trim();
+            let mask = document.getElementById("mask").value.trim();
+            let errorDiv = document.getElementById("error-message");
+            let resultDiv = document.getElementById("result");
+
+            errorDiv.innerHTML = "";
+            resultDiv.innerHTML = "";
+
+            if (!validarIP(ip)) {
+                errorDiv.innerHTML = "⚠️ Dirección IP inválida.";
+                return;
+            }
+            if (!validarMascara(mask)) {
+                errorDiv.innerHTML = "⚠️ Máscara de red o prefijo inválido.";
+                return;
+            }
+
+            fetch('/calcular', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ip: ip, mask: mask })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    errorDiv.innerHTML = `⚠️ ${data.error}`;
+                    return;
+                }
+                resultDiv.innerHTML = `
+                    <p><strong>IP de Red:</strong> ${data.network}</p>
+                    <p><strong>IP de Broadcast:</strong> ${data.broadcast}</p>
+                    <p><strong>Hosts útiles:</strong> ${data.hosts}</p>
+                    <p><strong>Rango de IPs útiles:</strong> ${data.range}</p>
+                    <p><strong>Clase:</strong> ${data.class}</p>
+                    <p><strong>Tipo:</strong> ${data.type}</p>
+                    <div class="binary-container">
+                        <div class="binary-representation">
+                            <span class="red-part">${data.binary_red}</span><span class="host-part">${data.binary_host}</span>
+                        </div>
+                        <p class="legend"><span class="red-part">Red</span>: <span class="host-part">Host</span></p>
+                    </div>
+                `;
+            })
+            
+            .catch(error => {
+                errorDiv.innerHTML = `⚠️ Error: ${error}`;
+            });
+        }
+
+        function reiniciar() {
+            document.getElementById("ip").value = "";
+            document.getElementById("mask").value = "";
+            document.getElementById("result").innerHTML = "";
+            document.getElementById("error-message").innerHTML = "";
+        }
+    </script>
+</body>
+</html>
